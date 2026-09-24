@@ -9,6 +9,9 @@ import type {
   MonthSummary,
   Transaction,
 } from '../types';
+
+// Re-export so consumers can import chart-specific types from one place
+export type { CategoryExpense } from '../types';
 import { isInMonth, daysElapsedInMonth, monthKeyToDate } from './dates';
 
 // ─── Basic filters ─────────────────────────────────────────────────────────────
