@@ -1,157 +1,102 @@
-/**
- * Storage service — single access point for all LocalStorage reads/writes.
- * Swap this file's implementation to migrate to a real backend later.
- */
+export { transactionStorage } from "./storage/transactions";
+export { categoryStorage } from "./storage/categories";
+export { budgetStorage } from "./storage/budgets";
+export { settingsStorage } from "./storage/settings";
+export { ensureDefaultCategories } from "./storage/common";
 
-import type { AppSettings, Category, MonthlyBudget, Transaction } from '../types';
-import { DEFAULT_CATEGORIES } from '../data/defaultCategories';
-import { SEED_TRANSACTIONS } from '../data/seedTransactions';
+import { ensureDefaultCategories } from "./storage/common";
+import { settingsStorage } from "./storage/settings";
+import { transactionStorage } from "./storage/transactions";
+import { SEED_TRANSACTIONS } from "../data/seedTransactions";
+import { hasSupabaseConfig, supabase } from "../lib/supabase";
 
-// ─── Storage keys ─────────────────────────────────────────────────────────────
-const KEYS = {
-  TRANSACTIONS: 'finance_transactions',
-  CATEGORIES:   'finance_categories',
-  BUDGETS:      'finance_budgets',
-  SETTINGS:     'finance_settings',
-} as const;
+async function hydrateFromSupabase(): Promise<void> {
+  if (!supabase) return;
 
-// ─── Default settings ─────────────────────────────────────────────────────────
-const DEFAULT_SETTINGS: AppSettings = {
-  currency:       'EGP',
-  currencySymbol: 'EGP',
-  locale:         'en-EG',
-  seedDataLoaded: false,
-};
+  const [transactionsResult, categoriesResult, budgetsResult, settingsResult] = await Promise.all([
+    supabase.from("transactions").select("*").order("date", { ascending: false }),
+    supabase.from("categories").select("*"),
+    supabase.from("budgets").select("*"),
+    supabase.from("settings").select("*").eq("id", "default").maybeSingle(),
+  ]);
 
-// ─── Generic helpers ──────────────────────────────────────────────────────────
-function load<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw === null) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
+  if (transactionsResult.data) {
+    localStorage.setItem(
+      "finance_transactions",
+      JSON.stringify(
+        transactionsResult.data.map((row: any) => ({
+          id: row.id,
+          type: row.type,
+          amount: Number(row.amount ?? 0),
+          categoryId: row.category_id,
+          description: row.description ?? "",
+          date: row.date,
+          createdAt: row.created_at ?? new Date().toISOString(),
+        })),
+      ),
+    );
+  }
+
+  if (categoriesResult.data) {
+    localStorage.setItem(
+      "finance_categories",
+      JSON.stringify(
+        categoriesResult.data.map((row: any) => ({
+          id: row.id,
+          name: row.name,
+          type: row.type,
+          isDefault: Boolean(row.is_default),
+        })),
+      ),
+    );
+  }
+
+  if (budgetsResult.data) {
+    localStorage.setItem(
+      "finance_budgets",
+      JSON.stringify(
+        budgetsResult.data.map((row: any) => ({
+          id: row.id,
+          month: row.month,
+          totalBudget: row.total_budget,
+          categoryBudgets: Array.isArray(row.category_budgets) ? row.category_budgets : [],
+        })),
+      ),
+    );
+  }
+
+  if (settingsResult.data) {
+    localStorage.setItem(
+      "finance_settings",
+      JSON.stringify({
+        currency: settingsResult.data.currency ?? "EGP",
+        currencySymbol: settingsResult.data.currency_symbol ?? "EGP",
+        locale: settingsResult.data.locale ?? "en-EG",
+        seedDataLoaded: Boolean(settingsResult.data.seed_data_loaded),
+      }),
+    );
   }
 }
 
-function save<T>(key: string, value: T): void {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
-// ─── Transactions ─────────────────────────────────────────────────────────────
-export const transactionStorage = {
-  getAll(): Transaction[] {
-    return load<Transaction[]>(KEYS.TRANSACTIONS, []);
-  },
-  save(transactions: Transaction[]): void {
-    save(KEYS.TRANSACTIONS, transactions);
-  },
-  add(transaction: Transaction): Transaction[] {
-    const all = transactionStorage.getAll();
-    const updated = [transaction, ...all];
-    transactionStorage.save(updated);
-    return updated;
-  },
-  update(updated: Transaction): Transaction[] {
-    const all = transactionStorage.getAll().map(t => (t.id === updated.id ? updated : t));
-    transactionStorage.save(all);
-    return all;
-  },
-  delete(id: string): Transaction[] {
-    const all = transactionStorage.getAll().filter(t => t.id !== id);
-    transactionStorage.save(all);
-    return all;
-  },
-  deleteMany(ids: string[]): Transaction[] {
-    const set = new Set(ids);
-    const all = transactionStorage.getAll().filter(t => !set.has(t.id));
-    transactionStorage.save(all);
-    return all;
-  },
-};
-
-// ─── Categories ───────────────────────────────────────────────────────────────
-export const categoryStorage = {
-  getAll(): Category[] {
-    return load<Category[]>(KEYS.CATEGORIES, DEFAULT_CATEGORIES);
-  },
-  save(categories: Category[]): void {
-    save(KEYS.CATEGORIES, categories);
-  },
-  add(category: Category): Category[] {
-    const all = [...categoryStorage.getAll(), category];
-    categoryStorage.save(all);
-    return all;
-  },
-  update(updated: Category): Category[] {
-    const all = categoryStorage.getAll().map(c => (c.id === updated.id ? updated : c));
-    categoryStorage.save(all);
-    return all;
-  },
-  delete(id: string): Category[] {
-    const all = categoryStorage.getAll().filter(c => c.id !== id);
-    categoryStorage.save(all);
-    return all;
-  },
-};
-
-// ─── Budgets ──────────────────────────────────────────────────────────────────
-export const budgetStorage = {
-  getAll(): MonthlyBudget[] {
-    return load<MonthlyBudget[]>(KEYS.BUDGETS, []);
-  },
-  getByMonth(month: string): MonthlyBudget | undefined {
-    return budgetStorage.getAll().find(b => b.month === month);
-  },
-  save(budgets: MonthlyBudget[]): void {
-    save(KEYS.BUDGETS, budgets);
-  },
-  upsert(budget: MonthlyBudget): MonthlyBudget[] {
-    const all = budgetStorage.getAll();
-    const idx = all.findIndex(b => b.id === budget.id);
-    const updated = idx === -1 ? [...all, budget] : all.map(b => (b.id === budget.id ? budget : b));
-    budgetStorage.save(updated);
-    return updated;
-  },
-  delete(id: string): MonthlyBudget[] {
-    const all = budgetStorage.getAll().filter(b => b.id !== id);
-    budgetStorage.save(all);
-    return all;
-  },
-};
-
-// ─── Settings ─────────────────────────────────────────────────────────────────
-export const settingsStorage = {
-  get(): AppSettings {
-    return load<AppSettings>(KEYS.SETTINGS, DEFAULT_SETTINGS);
-  },
-  save(settings: AppSettings): void {
-    save(KEYS.SETTINGS, settings);
-  },
-  update(patch: Partial<AppSettings>): AppSettings {
-    const current = settingsStorage.get();
-    const updated = { ...current, ...patch };
-    settingsStorage.save(updated);
-    return updated;
-  },
-};
-
-// ─── Initialization ───────────────────────────────────────────────────────────
-/**
- * Called once on app boot. Seeds default categories and demo transactions
- * if this is the first launch (seedDataLoaded === false).
- */
 export function initializeStorage(): void {
-  const settings = settingsStorage.get();
+  if (hasSupabaseConfig()) {
+    const hasLocalCache = Boolean(
+      localStorage.getItem("finance_transactions") ||
+      localStorage.getItem("finance_categories") ||
+      localStorage.getItem("finance_budgets") ||
+      localStorage.getItem("finance_settings"),
+    );
 
-  // Always ensure default categories exist (e.g. after a category storage clear)
-  const storedCategories = localStorage.getItem(KEYS.CATEGORIES);
-  if (storedCategories === null) {
-    categoryStorage.save(DEFAULT_CATEGORIES);
+    if (!hasLocalCache) {
+      void hydrateFromSupabase();
+    }
+    return;
   }
 
+  ensureDefaultCategories();
+
+  const settings = settingsStorage.get();
   if (!settings.seedDataLoaded) {
-    // Only seed if there are no transactions yet
     const existing = transactionStorage.getAll();
     if (existing.length === 0) {
       transactionStorage.save(SEED_TRANSACTIONS);
