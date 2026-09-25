@@ -127,7 +127,7 @@ export function Settings() {
               {[
                 ["App", "MoneyTrack"],
                 ["Version", "1.0.0"],
-                ["Storage", "Browser LocalStorage"],
+                ["Storage", "Supabase"],
                 ["Currency", settings.currency],
               ].map(([k, v]) => (
                 <div key={k} className="flex gap-2">

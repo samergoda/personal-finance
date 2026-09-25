@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { v4 as uuidv4 } from "uuid";
 import type { Category, CategoryFormData } from "../types";
 import { categoryStorage } from "../services/storage";
@@ -11,125 +12,112 @@ const mapCategory = (row: any): Category => ({
   isDefault: Boolean(row.is_default),
 });
 
+const queryKey = ["categories"] as const;
+
 export function useCategories() {
-  const [categories, setCategories] = useState<Category[]>(() => categoryStorage.getAll());
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (!hasSupabaseConfig() || !supabase) return;
+  const { data: categories = [] } = useQuery({
+    queryKey,
+    queryFn: async () => {
+      if (!hasSupabaseConfig() || !supabase) {
+        return categoryStorage.getAll();
+      }
 
-    void supabase
-      .from("categories")
-      .select("*")
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("Failed to load categories from Supabase:", error.message);
-          return;
-        }
+      const { data, error } = await supabase.from("categories").select("*");
+      if (error) throw error;
 
-        const rows = (data ?? []).map(mapCategory);
-        setCategories(rows);
+      const rows = (data ?? []).map(mapCategory);
+      categoryStorage.save(rows);
+      return rows;
+    },
+    initialData: () => categoryStorage.getAll(),
+  });
+
+  const addCategory = useMutation({
+    mutationFn: async (data: CategoryFormData): Promise<Category> => {
+      const newCat: Category = { ...data, id: uuidv4(), isDefault: false };
+
+      if (!hasSupabaseConfig() || !supabase) {
+        const rows = [...categoryStorage.getAll(), newCat];
         categoryStorage.save(rows);
-      });
-  }, []);
+        return newCat;
+      }
 
-  // ─── CRUD ────────────────────────────────────────────────────────────────────
-
-  const addCategory = useCallback((data: CategoryFormData): Category => {
-    const newCat: Category = { ...data, id: uuidv4(), isDefault: false };
-    const optimistic = [...categoryStorage.getAll(), newCat];
-    setCategories(optimistic);
-    categoryStorage.save(optimistic);
-
-    if (hasSupabaseConfig() && supabase) {
-      void supabase
+      const { error } = await supabase
         .from("categories")
-        .upsert(
-          [
-            {
-              id: newCat.id,
-              name: newCat.name,
-              type: newCat.type,
-              is_default: false,
-            },
-          ],
-          { onConflict: "id" },
-        )
-        .then(({ error }) => {
-          if (error) {
-            console.error("Supabase category insert failed:", error.message);
-          }
-        });
-    }
+        .upsert([{ id: newCat.id, name: newCat.name, type: newCat.type, is_default: false }], { onConflict: "id" });
 
-    return newCat;
-  }, []);
+      if (error) throw error;
 
-  const updateCategory = useCallback((id: string, data: CategoryFormData) => {
-    const existing = categoryStorage.getAll().find((c) => c.id === id);
-    if (!existing) return;
+      const rows = [...categoryStorage.getAll(), newCat];
+      categoryStorage.save(rows);
+      return newCat;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  }).mutate;
 
-    const next = { ...existing, ...data };
-    const updated = categoryStorage.getAll().map((c) => (c.id === id ? next : c));
-    setCategories(updated);
-    categoryStorage.save(updated);
+  const updateCategory = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: CategoryFormData }) => {
+      const current = categoryStorage.getAll().find((c) => c.id === id);
+      if (!current) return;
 
-    if (hasSupabaseConfig() && supabase) {
-      void supabase
+      const next = { ...current, ...data };
+
+      if (!hasSupabaseConfig() || !supabase) {
+        const rows = categoryStorage.getAll().map((c) => (c.id === id ? next : c));
+        categoryStorage.save(rows);
+        return next;
+      }
+
+      const { error } = await supabase
         .from("categories")
-        .upsert(
-          [
-            {
-              id: next.id,
-              name: next.name,
-              type: next.type,
-              is_default: Boolean(next.isDefault),
-            },
-          ],
-          { onConflict: "id" },
-        )
-        .then(({ error }) => {
-          if (error) {
-            console.error("Supabase category update failed:", error.message);
-          }
-        });
-    }
-  }, []);
+        .upsert([{ id: next.id, name: next.name, type: next.type, is_default: Boolean(next.isDefault) }], { onConflict: "id" });
 
-  /**
-   * Deletes a category. If transactions use it, they must be reassigned first.
-   */
-  const deleteCategory = useCallback((id: string) => {
-    const updated = categoryStorage.getAll().filter((c) => c.id !== id);
-    setCategories(updated);
-    categoryStorage.save(updated);
+      if (error) throw error;
 
-    if (hasSupabaseConfig() && supabase) {
-      void supabase
-        .from("categories")
-        .delete()
-        .eq("id", id)
-        .then(({ error }) => {
-          if (error) {
-            console.error("Supabase category delete failed:", error.message);
-          }
-        });
-    }
-  }, []);
+      const rows = categoryStorage.getAll().map((c) => (c.id === id ? next : c));
+      categoryStorage.save(rows);
+      return next;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  }).mutate;
 
-  // ─── Derived helpers ─────────────────────────────────────────────────────────
+  const deleteCategory = useMutation({
+    mutationFn: async (id: string) => {
+      if (!hasSupabaseConfig() || !supabase) {
+        const rows = categoryStorage.getAll().filter((c) => c.id !== id);
+        categoryStorage.save(rows);
+        return id;
+      }
 
-  const getCategoryById = useCallback((id: string) => categories.find((c) => c.id === id), [categories]);
+      const { error } = await supabase.from("categories").delete().eq("id", id);
+      if (error) throw error;
+
+      const rows = categoryStorage.getAll().filter((c) => c.id !== id);
+      categoryStorage.save(rows);
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  }).mutate;
+
+  const getCategoryById = useMemo(() => (id: string) => categories.find((c) => c.id === id), [categories]);
 
   const expenseCategories = useMemo(() => categories.filter((c) => c.type === "expense"), [categories]);
-
   const incomeCategories = useMemo(() => categories.filter((c) => c.type === "income"), [categories]);
 
   return {
     categories,
     expenseCategories,
     incomeCategories,
-    addCategory,
-    updateCategory,
+    addCategory: (data: CategoryFormData) => addCategory(data),
+    updateCategory: (id: string, data: CategoryFormData) => updateCategory({ id, data }),
     deleteCategory,
     getCategoryById,
   };

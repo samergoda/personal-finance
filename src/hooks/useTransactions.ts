@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { v4 as uuidv4 } from "uuid";
 import type { Transaction, TransactionFormData } from "../types";
 import { transactionStorage } from "../services/storage";
@@ -15,152 +16,158 @@ const mapTransaction = (row: any): Transaction => ({
   createdAt: row.created_at ?? new Date().toISOString(),
 });
 
+const queryKey = ["transactions"] as const;
+
 export function useTransactions() {
-  const [transactions, setTransactions] = useState<Transaction[]>(() => transactionStorage.getAll());
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (!hasSupabaseConfig() || !supabase) return;
+  const { data: transactions = [] } = useQuery({
+    queryKey,
+    queryFn: async () => {
+      if (!hasSupabaseConfig() || !supabase) {
+        return transactionStorage.getAll();
+      }
 
-    void supabase
-      .from("transactions")
-      .select("*")
-      .order("date", { ascending: false })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("Failed to load transactions from Supabase:", error.message);
-          return;
-        }
+      const { data, error } = await supabase.from("transactions").select("*").order("date", { ascending: false });
+      if (error) throw error;
 
-        const rows = (data ?? []).map(mapTransaction);
-        setTransactions(rows);
+      const rows = (data ?? []).map(mapTransaction);
+      transactionStorage.save(rows);
+      return rows;
+    },
+    initialData: () => transactionStorage.getAll(),
+  });
+
+  const addTransaction = useMutation({
+    mutationFn: async (data: TransactionFormData): Promise<Transaction> => {
+      const newTx: Transaction = {
+        ...data,
+        id: uuidv4(),
+        createdAt: new Date().toISOString(),
+      };
+
+      if (!hasSupabaseConfig() || !supabase) {
+        const rows = [newTx, ...transactionStorage.getAll()];
         transactionStorage.save(rows);
-      });
-  }, []);
+        return newTx;
+      }
 
-  // ─── CRUD ────────────────────────────────────────────────────────────────────
+      const { error } = await supabase.from("transactions").upsert(
+        [
+          {
+            id: newTx.id,
+            type: newTx.type,
+            amount: newTx.amount,
+            category_id: newTx.categoryId,
+            description: newTx.description,
+            date: newTx.date,
+            created_at: newTx.createdAt,
+          },
+        ],
+        { onConflict: "id" },
+      );
 
-  const addTransaction = useCallback((data: TransactionFormData) => {
-    const newTx: Transaction = {
-      ...data,
-      id: uuidv4(),
-      createdAt: new Date().toISOString(),
-    };
+      if (error) throw error;
 
-    const optimistic = [newTx, ...transactionStorage.getAll()];
-    setTransactions(optimistic);
-    transactionStorage.save(optimistic);
+      const rows = [newTx, ...transactionStorage.getAll()];
+      transactionStorage.save(rows);
+      return newTx;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  }).mutate;
 
-    if (hasSupabaseConfig() && supabase) {
-      void supabase
-        .from("transactions")
-        .upsert(
-          [
-            {
-              id: newTx.id,
-              type: newTx.type,
-              amount: newTx.amount,
-              category_id: newTx.categoryId,
-              description: newTx.description,
-              date: newTx.date,
-              created_at: newTx.createdAt,
-            },
-          ],
-          { onConflict: "id" },
-        )
-        .then(({ error }) => {
-          if (error) {
-            console.error("Supabase transaction insert failed:", error.message);
-          }
-        });
-    }
+  const updateTransaction = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: TransactionFormData }) => {
+      const existing = transactionStorage.getAll().find((t) => t.id === id);
+      if (!existing) return;
 
-    return newTx;
-  }, []);
+      const next = { ...existing, ...data };
 
-  const updateTransaction = useCallback((id: string, data: TransactionFormData) => {
-    const existing = transactionStorage.getAll().find((t) => t.id === id);
-    if (!existing) return;
+      if (!hasSupabaseConfig() || !supabase) {
+        const rows = transactionStorage.getAll().map((t) => (t.id === id ? next : t));
+        transactionStorage.save(rows);
+        return next;
+      }
 
-    const next = { ...existing, ...data };
-    const updated = transactionStorage.getAll().map((t) => (t.id === id ? next : t));
-    setTransactions(updated);
-    transactionStorage.save(updated);
+      const { error } = await supabase.from("transactions").upsert(
+        [
+          {
+            id: next.id,
+            type: next.type,
+            amount: next.amount,
+            category_id: next.categoryId,
+            description: next.description,
+            date: next.date,
+            created_at: next.createdAt,
+          },
+        ],
+        { onConflict: "id" },
+      );
 
-    if (hasSupabaseConfig() && supabase) {
-      void supabase
-        .from("transactions")
-        .upsert(
-          [
-            {
-              id: next.id,
-              type: next.type,
-              amount: next.amount,
-              category_id: next.categoryId,
-              description: next.description,
-              date: next.date,
-              created_at: next.createdAt,
-            },
-          ],
-          { onConflict: "id" },
-        )
-        .then(({ error }) => {
-          if (error) {
-            console.error("Supabase transaction update failed:", error.message);
-          }
-        });
-    }
-  }, []);
+      if (error) throw error;
 
-  const deleteTransaction = useCallback((id: string) => {
-    const updated = transactionStorage.getAll().filter((t) => t.id !== id);
-    setTransactions(updated);
-    transactionStorage.save(updated);
+      const rows = transactionStorage.getAll().map((t) => (t.id === id ? next : t));
+      transactionStorage.save(rows);
+      return next;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  }).mutate;
 
-    if (hasSupabaseConfig() && supabase) {
-      void supabase
-        .from("transactions")
-        .delete()
-        .eq("id", id)
-        .then(({ error }) => {
-          if (error) {
-            console.error("Supabase transaction delete failed:", error.message);
-          }
-        });
-    }
-  }, []);
+  const deleteTransaction = useMutation({
+    mutationFn: async (id: string) => {
+      if (!hasSupabaseConfig() || !supabase) {
+        const rows = transactionStorage.getAll().filter((t) => t.id !== id);
+        transactionStorage.save(rows);
+        return id;
+      }
 
-  const deleteTransactions = useCallback((ids: string[]) => {
-    const updated = transactionStorage.getAll().filter((t) => !ids.includes(t.id));
-    setTransactions(updated);
-    transactionStorage.save(updated);
+      const { error } = await supabase.from("transactions").delete().eq("id", id);
+      if (error) throw error;
 
-    if (hasSupabaseConfig() && supabase) {
-      void supabase
-        .from("transactions")
-        .delete()
-        .in("id", ids)
-        .then(({ error }) => {
-          if (error) {
-            console.error("Supabase bulk transaction delete failed:", error.message);
-          }
-        });
-    }
-  }, []);
+      const rows = transactionStorage.getAll().filter((t) => t.id !== id);
+      transactionStorage.save(rows);
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  }).mutate;
 
-  // ─── Derived helpers ─────────────────────────────────────────────────────────
+  const deleteTransactions = useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (!hasSupabaseConfig() || !supabase) {
+        const rows = transactionStorage.getAll().filter((t) => !ids.includes(t.id));
+        transactionStorage.save(rows);
+        return ids;
+      }
 
-  const getByMonth = useCallback((monthKey: string) => filterByMonth(transactions, monthKey), [transactions]);
+      const { error } = await supabase.from("transactions").delete().in("id", ids);
+      if (error) throw error;
 
-  const getById = useCallback((id: string) => transactions.find((t) => t.id === id), [transactions]);
+      const rows = transactionStorage.getAll().filter((t) => !ids.includes(t.id));
+      transactionStorage.save(rows);
+      return ids;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  }).mutate;
 
-  /** Sorted by date descending (newest first) */
+  const getByMonth = useMemo(() => (monthKey: string) => filterByMonth(transactions, monthKey), [transactions]);
+
+  const getById = useMemo(() => (id: string) => transactions.find((t) => t.id === id), [transactions]);
+
   const sortedTransactions = useMemo(() => [...transactions].sort((a, b) => b.date.localeCompare(a.date)), [transactions]);
 
   return {
     transactions,
     sortedTransactions,
-    addTransaction,
-    updateTransaction,
+    addTransaction: (data: TransactionFormData) => addTransaction(data),
+    updateTransaction: (id: string, data: TransactionFormData) => updateTransaction({ id, data }),
     deleteTransaction,
     deleteTransactions,
     getByMonth,
