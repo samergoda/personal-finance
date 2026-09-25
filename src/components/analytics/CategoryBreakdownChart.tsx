@@ -46,7 +46,7 @@ export function CategoryBreakdownChart({ data, currency, locale }: CategoryBreak
       </CardHeader>
       <CardContent>
         <div className="flex flex-col md:flex-row items-center gap-6">
-          <div className="flex-shrink-0">
+          <div className="shrink-0">
             <ResponsiveContainer width={220} height={220}>
               <PieChart>
                 <Pie data={data} cx="50%" cy="50%" innerRadius={60} outerRadius={95} dataKey="amount" nameKey="categoryName">
@@ -61,7 +61,7 @@ export function CategoryBreakdownChart({ data, currency, locale }: CategoryBreak
           <ul className="flex-1 w-full space-y-2">
             {data.map((item, i) => (
               <li key={item.categoryId} className="flex items-center gap-3">
-                <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
                 <span className="flex-1 text-sm truncate text-muted-foreground">{item.categoryName}</span>
                 <span className="text-sm font-medium whitespace-nowrap">{formatCurrency(item.amount, { currency, locale })}</span>
                 <span className="text-xs text-muted-foreground w-12 text-right">{item.percentage.toFixed(1)}%</span>

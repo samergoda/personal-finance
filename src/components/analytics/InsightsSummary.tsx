@@ -1,6 +1,5 @@
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Separator } from "@/components/ui/separator";
 import { formatCurrency, formatPercent } from "@/utils/formatting";
 import type { CategoryExpense } from "@/types/analytics";
 
@@ -61,20 +60,19 @@ export function InsightsSummary({
   ];
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">Financial Insights</CardTitle>
-        <CardDescription>This month at a glance</CardDescription>
+    <Card className="border-white/10 bg-slate-950/70 shadow-[0_18px_50px_rgba(15,23,42,0.38)]">
+      <CardHeader className="border-b border-white/10 bg-white/[0.02] pb-4">
+        <CardTitle className="text-base text-white">Financial insights</CardTitle>
+        <CardDescription className="text-slate-300">This month at a glance</CardDescription>
       </CardHeader>
       <CardContent className="pt-0">
-        <ul>
-          {rows.map((row, i) => (
+        <ul className="divide-y divide-white/10">
+          {rows.map((row) => (
             <li key={row.label}>
-              {i > 0 && <Separator />}
-              <div className="flex items-center justify-between py-2.5 gap-4">
-                <span className="text-sm text-muted-foreground">{row.label}</span>
+              <div className="flex items-center justify-between gap-4 py-3.5">
+                <span className="text-sm text-slate-300">{row.label}</span>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="text-sm font-semibold">{row.value}</span>
+                  <span className="text-sm font-semibold text-white">{row.value}</span>
                   {row.extra}
                 </div>
               </div>

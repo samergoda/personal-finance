@@ -40,15 +40,20 @@ export function TransactionFiltersBar({ filters, onChange, categories }: Transac
   const hasActive = filters.search || filters.type || filters.categoryId || filters.month || filters.dateFrom || filters.dateTo;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 rounded-2xl border border-white/10 bg-slate-950/60 p-3 shadow-[0_20px_45px_rgba(15,23,42,0.3)]">
       <div className="relative">
-        <HiOutlineMagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input className="pl-9" placeholder="Search transactions…" value={filters.search} onChange={(e) => set("search", e.target.value)} />
+        <HiOutlineMagnifyingGlass className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Input
+          className="h-14 pl-11 pr-4 text-base placeholder:text-slate-400"
+          placeholder="Search transactions…"
+          value={filters.search}
+          onChange={(e) => set("search", e.target.value)}
+        />
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-3">
         <Select value={filters.type || "__all__"} onValueChange={(v) => set("type", v === "__all__" ? "" : (v as "income" | "expense"))}>
-          <SelectTrigger className="w-36">
+          <SelectTrigger className="w-[170px]">
             <SelectValue placeholder="All types" />
           </SelectTrigger>
           <SelectContent>
@@ -59,7 +64,7 @@ export function TransactionFiltersBar({ filters, onChange, categories }: Transac
         </Select>
 
         <Select value={filters.categoryId || "__all__"} onValueChange={(v) => set("categoryId", v === "__all__" ? "" : v)}>
-          <SelectTrigger className="w-44">
+          <SelectTrigger className="w-[190px]">
             <SelectValue placeholder="All categories" />
           </SelectTrigger>
           <SelectContent>
@@ -72,11 +77,17 @@ export function TransactionFiltersBar({ filters, onChange, categories }: Transac
           </SelectContent>
         </Select>
 
-        <Input type="month" className="w-40" value={filters.month} onChange={(e) => set("month", e.target.value)} />
+        <Input type="month" className="w-[170px]" value={filters.month} onChange={(e) => set("month", e.target.value)} />
 
-        <Input type="date" className="w-38" value={filters.dateFrom} onChange={(e) => set("dateFrom", e.target.value)} placeholder="From" />
+        <Input
+          type="date"
+          className="w-[150px]"
+          value={filters.dateFrom}
+          onChange={(e) => set("dateFrom", e.target.value)}
+          placeholder="From"
+        />
 
-        <Input type="date" className="w-38" value={filters.dateTo} onChange={(e) => set("dateTo", e.target.value)} placeholder="To" />
+        <Input type="date" className="w-[150px]" value={filters.dateTo} onChange={(e) => set("dateTo", e.target.value)} placeholder="To" />
 
         <Select
           value={`${filters.sortBy}-${filters.sortDir}`}
@@ -84,8 +95,8 @@ export function TransactionFiltersBar({ filters, onChange, categories }: Transac
             const [by, dir] = v.split("-") as ["date" | "amount", "asc" | "desc"];
             onChange({ ...filters, sortBy: by, sortDir: dir });
           }}>
-          <SelectTrigger className="w-38">
-            <SelectValue />
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Newest first" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="date-desc">Newest first</SelectItem>
@@ -96,8 +107,12 @@ export function TransactionFiltersBar({ filters, onChange, categories }: Transac
         </Select>
 
         {hasActive && (
-          <Button variant="ghost" size="sm" onClick={() => onChange(DEFAULT_FILTERS)}>
-            <HiOutlineXMark className="h-4 w-4 mr-1" />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onChange(DEFAULT_FILTERS)}
+            className="h-12 rounded-xl border border-white/10 bg-slate-800/60 text-slate-200 hover:bg-slate-700/70">
+            <HiOutlineXMark className="mr-1 h-4 w-4" />
             Clear
           </Button>
         )}

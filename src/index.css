@@ -2,26 +2,26 @@
 
 @layer base {
   :root {
-    --background:         0 0% 100%;
-    --foreground:         222.2 84% 4.9%;
-    --card:               0 0% 100%;
-    --card-foreground:    222.2 84% 4.9%;
-    --popover:            0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary:            238 84% 57%;
-    --primary-foreground: 0 0% 100%;
-    --secondary:          210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted:              210 40% 96.1%;
-    --muted-foreground:   215.4 16.3% 46.9%;
-    --accent:             210 40% 96.1%;
-    --accent-foreground:  222.2 47.4% 11.2%;
-    --destructive:        0 84.2% 60.2%;
+    --background: 222 30% 9%;
+    --foreground: 210 40% 98%;
+    --card: 222 26% 13%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 26% 13%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 190 80% 55%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 220 18% 18%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 220 18% 16%;
+    --muted-foreground: 215 18% 72%;
+    --accent: 258 80% 62%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 72% 60%;
     --destructive-foreground: 210 40% 98%;
-    --border:             214.3 31.8% 91.4%;
-    --input:              214.3 31.8% 91.4%;
-    --ring:               238 84% 57%;
-    --radius:             0.5rem;
+    --border: 220 18% 18%;
+    --input: 220 18% 18%;
+    --ring: 190 80% 55%;
+    --radius: 0.85rem;
   }
 
   * {
@@ -30,13 +30,22 @@
   }
 
   html {
-    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    font-family:
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Roboto,
+      sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    background: hsl(var(--background));
+    color-scheme: dark;
   }
 
   body {
-    background-color: hsl(var(--background));
+    background:
+      radial-gradient(circle at top, rgba(59, 130, 246, 0.18), transparent 30%),
+      radial-gradient(circle at bottom right, rgba(168, 85, 247, 0.14), transparent 35%), hsl(var(--background));
     color: hsl(var(--foreground));
     margin: 0;
   }
@@ -45,39 +54,113 @@
     min-height: 100svh;
   }
 
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: hsl(var(--muted)); }
-  ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 9999px; }
-  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
+  a {
+    color: inherit;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
 }
 
-/* Utility classes that use CSS vars so Tailwind can pick them up */
 @layer utilities {
-  .bg-background        { background-color: hsl(var(--background)); }
-  .bg-card              { background-color: hsl(var(--card)); }
-  .bg-popover           { background-color: hsl(var(--popover)); }
-  .bg-primary           { background-color: hsl(var(--primary)); }
-  .bg-secondary         { background-color: hsl(var(--secondary)); }
-  .bg-muted             { background-color: hsl(var(--muted)); }
-  .bg-accent            { background-color: hsl(var(--accent)); }
-  .bg-destructive       { background-color: hsl(var(--destructive)); }
-  .text-foreground      { color: hsl(var(--foreground)); }
-  .text-card-foreground { color: hsl(var(--card-foreground)); }
-  .text-popover-foreground { color: hsl(var(--popover-foreground)); }
-  .text-primary-foreground { color: hsl(var(--primary-foreground)); }
-  .text-secondary-foreground { color: hsl(var(--secondary-foreground)); }
-  .text-muted-foreground { color: hsl(var(--muted-foreground)); }
-  .text-accent-foreground { color: hsl(var(--accent-foreground)); }
-  .text-destructive-foreground { color: hsl(var(--destructive-foreground)); }
-  .border-input         { border-color: hsl(var(--input)); }
-  .border-border        { border-color: hsl(var(--border)); }
-  .ring-ring            { --tw-ring-color: hsl(var(--ring)); }
-  .ring-offset-background { --tw-ring-offset-color: hsl(var(--background)); }
+  .bg-background {
+    background-color: hsl(var(--background));
+  }
+  .bg-card {
+    background-color: hsl(var(--card));
+  }
+  .bg-popover {
+    background-color: hsl(var(--popover));
+  }
+  .bg-primary {
+    background-color: hsl(var(--primary));
+  }
+  .bg-secondary {
+    background-color: hsl(var(--secondary));
+  }
+  .bg-muted {
+    background-color: hsl(var(--muted));
+  }
+  .bg-accent {
+    background-color: hsl(var(--accent));
+  }
+  .bg-destructive {
+    background-color: hsl(var(--destructive));
+  }
+  .text-foreground {
+    color: hsl(var(--foreground));
+  }
+  .text-card-foreground {
+    color: hsl(var(--card-foreground));
+  }
+  .text-popover-foreground {
+    color: hsl(var(--popover-foreground));
+  }
+  .text-primary-foreground {
+    color: hsl(var(--primary-foreground));
+  }
+  .text-secondary-foreground {
+    color: hsl(var(--secondary-foreground));
+  }
+  .text-muted-foreground {
+    color: hsl(var(--muted-foreground));
+  }
+  .text-accent-foreground {
+    color: hsl(var(--accent-foreground));
+  }
+  .text-destructive-foreground {
+    color: hsl(var(--destructive-foreground));
+  }
+  .border-input {
+    border-color: hsl(var(--input));
+  }
+  .border-border {
+    border-color: hsl(var(--border));
+  }
+  .ring-ring {
+    --tw-ring-color: hsl(var(--ring));
+  }
+  .ring-offset-background {
+    --tw-ring-offset-color: hsl(var(--background));
+  }
 
-  /* animate-in / animate-out stubs for Radix UI data attributes */
-  [data-state="open"]  { animation: fadeIn 150ms ease; }
-  [data-state="closed"] { animation: fadeOut 150ms ease; }
+  [data-state="open"] {
+    animation: fadeIn 150ms ease;
+  }
+  [data-state="closed"] {
+    animation: fadeOut 150ms ease;
+  }
 
-  @keyframes fadeIn  { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: scale(1); } }
-  @keyframes fadeOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(.97); } }
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes fadeOut {
+    from {
+      opacity: 1;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+  }
 }

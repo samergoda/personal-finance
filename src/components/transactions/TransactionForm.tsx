@@ -42,7 +42,7 @@ export function TransactionForm({ categories, initial, onSubmit, onCancel, loadi
     const num = parseFloat(amount);
     if (!amount || isNaN(num) || num <= 0) errs.amount = "Amount must be greater than 0";
     if (!categoryId) errs.categoryId = "Category is required";
-    if (!description.trim()) errs.description = "Description is required";
+    // if (!description.trim()) errs.description = "Description is required";
     if (!date) errs.date = "Date is required";
     setErrors(errs);
     return Object.keys(errs).length === 0;

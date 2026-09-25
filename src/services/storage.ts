@@ -80,16 +80,9 @@ async function hydrateFromSupabase(): Promise<void> {
 
 export function initializeStorage(): void {
   if (hasSupabaseConfig()) {
-    const hasLocalCache = Boolean(
-      localStorage.getItem("finance_transactions") ||
-      localStorage.getItem("finance_categories") ||
-      localStorage.getItem("finance_budgets") ||
-      localStorage.getItem("finance_settings"),
-    );
-
-    if (!hasLocalCache) {
-      void hydrateFromSupabase();
-    }
+    // Supabase is the primary source of truth when configured.
+    // Local storage is only a mirrored cache for offline behavior.
+    void hydrateFromSupabase();
     return;
   }
 
